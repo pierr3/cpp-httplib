@@ -43,6 +43,19 @@ if openssl_dep.found()
   endif
 endif
 
+wolfssl_dep = dependency('wolfssl', version: '>=5.5.0', required: get_option('cpp-httplib_wolfssl'))
+if wolfssl_dep.found()
+  deps += wolfssl_dep
+  args += '-DCPPHTTPLIB_WOLFSSL_SUPPORT'
+  if host_machine.system() == 'darwin'
+    macosx_keychain_dep = dependency('appleframeworks', modules: ['CoreFoundation', 'Security'], required: get_option('cpp-httplib_macosx_keychain'))
+    if macosx_keychain_dep.found()
+        deps += macosx_keychain_dep
+        args += '-DCPPHTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN'
+    endif  
+  endif
+endif
+
 zlib_dep = dependency('zlib', required: get_option('cpp-httplib_zlib'))
 if zlib_dep.found()
   deps += zlib_dep

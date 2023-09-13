@@ -234,7 +234,7 @@ using socket_t = int;
 #include <unordered_set>
 #include <utility>
 
-#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
+#if defined(CPPHTTPLIB_OPENSSL_SUPPORT) || defined(CPPHTTPLIB_WOLFSSL_SUPPORT) 
 #ifdef _WIN32
 #include <wincrypt.h>
 
@@ -257,6 +257,7 @@ using socket_t = int;
 #endif // TARGET_OS_OSX
 #endif // _WIN32
 
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
@@ -266,14 +267,35 @@ using socket_t = int;
 #include <openssl/applink.c>
 #endif
 
-#include <iostream>
-#include <sstream>
+#if OPENSSL_VERSION_NUMBER < 0x1010100fL
+#error Sorry, OpenSSL versions prior to 1.1.1 are not supported
+#elif OPENSSL_VERSION_NUMBER < 0x30000000L
+#define SSL_get1_peer_certificate SSL_get_peer_certificate
+#endif
+
+#endif
+
+#ifdef CPPHTTPLIB_WOLFSSL_SUPPORT
+#include <wolfssl/openssl/err.h>
+#include <wolfssl/openssl/evp.h>
+#include <wolfssl/openssl/ssl.h>
+#include <wolfssl/openssl/x509v3.h>
+
+#if defined(_WIN32) && defined(OPENSSL_USE_APPLINK)
+#include <wolfssl/openssl/applink.c>
+#endif
 
 #if OPENSSL_VERSION_NUMBER < 0x1010100fL
 #error Sorry, OpenSSL versions prior to 1.1.1 are not supported
 #elif OPENSSL_VERSION_NUMBER < 0x30000000L
 #define SSL_get1_peer_certificate SSL_get_peer_certificate
 #endif
+
+#endif
+
+#include <iostream>
+#include <sstream>
+
 
 #endif
 

@@ -43,6 +43,7 @@
 	These variables are available after you run find_package(httplib)
 	* HTTPLIB_HEADER_PATH - this is the full path to the installed header (e.g. /usr/include/httplib.h).
 	* HTTPLIB_IS_USING_OPENSSL - a bool for if OpenSSL support is enabled.
+	* HTTPLIB_IS_USING_WOLFSSL - a bool for if WolfSSL support is enabled.
 	* HTTPLIB_IS_USING_ZLIB - a bool for if ZLIB support is enabled.
 	* HTTPLIB_IS_USING_BROTLI - a bool for if Brotli support is enabled.
 	* HTTPLIB_IS_USING_CERTS_FROM_MACOSX_KEYCHAIN - a bool for if support of loading system certs from the Apple Keychain is enabled.
@@ -82,9 +83,11 @@ option(HTTPLIB_NO_EXCEPTIONS "Disable the use of C++ exceptions" OFF)
 # Change as needed to set an OpenSSL minimum version.
 # This is used in the installed Cmake config file.
 set(_HTTPLIB_OPENSSL_MIN_VER "1.1.1")
+set(_HTTPLIB_WOLFSSL_MIN_VER "5.5.0")
 
 # Allow for a build to require OpenSSL to pass, instead of just being optional
 option(HTTPLIB_REQUIRE_OPENSSL "Requires OpenSSL to be found & linked, or fails build." OFF)
+option(HTTPLIB_REQUIRE_WOLFSSL "Requires WolfSSL to be found & linked, or fails build." OFF)
 option(HTTPLIB_REQUIRE_ZLIB "Requires ZLIB to be found & linked, or fails build." OFF)
 # Allow for a build to casually enable OpenSSL/ZLIB support, but silently continue if not found.
 # Make these options so their automatic use can be specifically disabled (as needed)
@@ -119,9 +122,19 @@ if(HTTPLIB_REQUIRE_OPENSSL)
 elseif(HTTPLIB_USE_OPENSSL_IF_AVAILABLE)
 	find_package(OpenSSL ${_HTTPLIB_OPENSSL_MIN_VER} COMPONENTS Crypto SSL QUIET)
 endif()
+
+if(HTTPLIB_REQUIRE_WOLFSSL)
+	find_package(WolfSSL ${_HTTPLIB_WOLFSSL_MIN_VER} CONFIG REQUIRED)
+endif()
+
 # Just setting this variable here for people building in-tree
 if(OPENSSL_FOUND AND NOT DEFINED HTTPLIB_IS_USING_OPENSSL)
 	set(HTTPLIB_IS_USING_OPENSSL TRUE)
+endif()
+
+if(WOLFSSL_FOUND AND NOT DEFINED HTTPLIB_IS_USING_WOLFSSL)
+	set(HTTPLIB_IS_USING_OPENSSL FALSE) # Since WolfSSL is require only, if it is found, we force the use of it
+	set(HTTPLIB_IS_USING_WOLFSSL TRUE)
 endif()
 
 if(HTTPLIB_REQUIRE_ZLIB)
@@ -222,6 +235,7 @@ target_link_libraries(${PROJECT_NAME} ${_INTERFACE_OR_PUBLIC}
 		$<$<PLATFORM_ID:Windows>:cryptui>
 		# Needed for API from MacOS Security framework
 		"$<$<AND:$<PLATFORM_ID:Darwin>,$<BOOL:${HTTPLIB_IS_USING_OPENSSL}>,$<BOOL:${HTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN}>>:-framework CoreFoundation -framework Security>"
+		"$<$<AND:$<PLATFORM_ID:Darwin>,$<BOOL:${HTTPLIB_IS_USING_WOLFSSL}>,$<BOOL:${HTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN}>>:-framework CoreFoundation -framework Security>"
 		# Can't put multiple targets in a single generator expression or it bugs out.
 		$<$<BOOL:${HTTPLIB_IS_USING_BROTLI}>:Brotli::common>
 		$<$<BOOL:${HTTPLIB_IS_USING_BROTLI}>:Brotli::encoder>
@@ -229,6 +243,7 @@ target_link_libraries(${PROJECT_NAME} ${_INTERFACE_OR_PUBLIC}
 		$<$<BOOL:${HTTPLIB_IS_USING_ZLIB}>:ZLIB::ZLIB>
 		$<$<BOOL:${HTTPLIB_IS_USING_OPENSSL}>:OpenSSL::SSL>
 		$<$<BOOL:${HTTPLIB_IS_USING_OPENSSL}>:OpenSSL::Crypto>
+		$<$<BOOL:${HTTPLIB_IS_USING_WOLFSSL}>:WolfSSL::WolfSSL>
 )
 
 # Set the definitions to enable optional features
@@ -237,7 +252,9 @@ target_compile_definitions(${PROJECT_NAME} ${_INTERFACE_OR_PUBLIC}
 	$<$<BOOL:${HTTPLIB_IS_USING_BROTLI}>:CPPHTTPLIB_BROTLI_SUPPORT>
 	$<$<BOOL:${HTTPLIB_IS_USING_ZLIB}>:CPPHTTPLIB_ZLIB_SUPPORT>
 	$<$<BOOL:${HTTPLIB_IS_USING_OPENSSL}>:CPPHTTPLIB_OPENSSL_SUPPORT>
+	$<$<BOOL:${HTTPLIB_IS_USING_WOLFSSL}>:CPPHTTPLIB_WOLFSSL_SUPPORT>
 	$<$<AND:$<PLATFORM_ID:Darwin>,$<BOOL:${HTTPLIB_IS_USING_OPENSSL}>,$<BOOL:${HTTPLIB_IS_USING_CERTS_FROM_MACOSX_KEYCHAIN}>>:CPPHTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN>
+	$<$<AND:$<PLATFORM_ID:Darwin>,$<BOOL:${HTTPLIB_IS_USING_WOLFSSL}>,$<BOOL:${HTTPLIB_IS_USING_CERTS_FROM_MACOSX_KEYCHAIN}>>:CPPHTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN>
 )
 
 # CMake configuration files installation directory
